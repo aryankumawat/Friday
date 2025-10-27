@@ -14,6 +14,16 @@ Ensure Rust toolchain is installed (`rustup`), then:
 ```bash
 cargo run -p assistant-cli -- --sessions 2
 ```
+### Piper TTS (optional)
+
+Install `piper` and a voice model, then run:
+
+```bash
+cargo run -p assistant-cli -- --tts piper --piper-bin piper --piper-model /path/to/voice.onnx --piper-out /tmp/out.wav
+```
+
+Omit `--piper-out` to let Piper handle audio output if configured.
+
 
 You should see logs for wake detection, partial/final transcripts, and TTS.
 

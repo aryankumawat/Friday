@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
+use tokio::process::Command;
 use tracing::{info, instrument};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,6 +129,31 @@ impl TtsEngine for MockTts {
     async fn speak(&self, _text: &str, events: mpsc::Sender<EngineEvent>) -> Result<(), EngineError> {
         events.send(EngineEvent::TtsStarted).await.map_err(|e| EngineError::Tts(e.to_string()))?;
         sleep(Duration::from_millis(400)).await;
+        events.send(EngineEvent::TtsFinished).await.map_err(|e| EngineError::Tts(e.to_string()))?;
+        Ok(())
+    }
+}
+
+pub struct PiperTts {
+    pub piper_bin: String,
+    pub model_path: String,
+    pub output_wav: Option<String>,
+}
+
+#[async_trait]
+impl TtsEngine for PiperTts {
+    async fn speak(&self, text: &str, events: mpsc::Sender<EngineEvent>) -> Result<(), EngineError> {
+        events.send(EngineEvent::TtsStarted).await.map_err(|e| EngineError::Tts(e.to_string()))?;
+        let mut cmd = Command::new(&self.piper_bin);
+        cmd.arg("--model").arg(&self.model_path)
+            .arg("--sentence").arg(text);
+        if let Some(path) = &self.output_wav {
+            cmd.arg("--output_file").arg(path);
+        }
+        let status = cmd.status().await.map_err(|e| EngineError::Tts(e.to_string()))?;
+        if !status.success() {
+            return Err(EngineError::Tts(format!("piper exited with status {status}")));
+        }
         events.send(EngineEvent::TtsFinished).await.map_err(|e| EngineError::Tts(e.to_string()))?;
         Ok(())
     }
