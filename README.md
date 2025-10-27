@@ -22,3 +22,7 @@ You should see logs for wake detection, partial/final transcripts, and TTS.
 - Replace mock engines with real wake word, ASR, and TTS implementations
 - Add tests and benchmarks in `assistant-core`
 - Create a Tauri UI shell
+
+## Intents (mock)
+
+- Timer: phrases like "set a timer for 10 seconds/minutes" → schedules a notification and speaks back confirmation.

@@ -17,6 +17,10 @@ pub enum EngineEvent {
     FinalTranscript(String),
     TtsStarted,
     TtsFinished,
+    IntentRecognized(Intent),
+    ExecutionStarted(String),
+    ExecutionFinished(String),
+    Notification(String),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -46,15 +50,33 @@ pub trait TtsEngine: Send + Sync {
     async fn speak(&self, text: &str, events: mpsc::Sender<EngineEvent>) -> Result<(), EngineError>;
 }
 
-pub struct SessionManager<W: WakeDetector, A: AsrEngine, T: TtsEngine> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Intent {
+    Timer { duration_secs: u64 },
+    Unknown { text: String },
+}
+
+#[async_trait]
+pub trait NluEngine: Send + Sync {
+    async fn parse_intent(&self, text: &str) -> Intent;
+}
+
+#[async_trait]
+pub trait Executor: Send + Sync {
+    async fn execute(&self, intent: &Intent, events: mpsc::Sender<EngineEvent>) -> Result<String, EngineError>;
+}
+
+pub struct SessionManager<W: WakeDetector, A: AsrEngine, T: TtsEngine, N: NluEngine, E: Executor> {
     wake: W,
     asr: A,
     tts: T,
+    nlu: N,
+    exec: E,
 }
 
-impl<W: WakeDetector, A: AsrEngine, T: TtsEngine> SessionManager<W, A, T> {
-    pub fn new(wake: W, asr: A, tts: T) -> Self {
-        Self { wake, asr, tts }
+impl<W: WakeDetector, A: AsrEngine, T: TtsEngine, N: NluEngine, E: Executor> SessionManager<W, A, T, N, E> {
+    pub fn new(wake: W, asr: A, tts: T, nlu: N, exec: E) -> Self {
+        Self { wake, asr, tts, nlu, exec }
     }
 
     #[instrument(skip(self))]
@@ -65,7 +87,11 @@ impl<W: WakeDetector, A: AsrEngine, T: TtsEngine> SessionManager<W, A, T> {
         let final_text = self.asr.stream_until_silence(event_tx.clone()).await?;
         event_tx.send(EngineEvent::FinalTranscript(final_text.clone())).await.map_err(|e| EngineError::Asr(e.to_string()))?;
 
-        self.tts.speak(&format!("You said: {}", final_text), event_tx.clone()).await?;
+        let intent = self.nlu.parse_intent(&final_text).await;
+        event_tx.send(EngineEvent::IntentRecognized(intent.clone())).await.map_err(|e| EngineError::Asr(e.to_string()))?;
+
+        let speak_text = self.exec.execute(&intent, event_tx.clone()).await?;
+        self.tts.speak(&speak_text, event_tx.clone()).await?;
         Ok(())
     }
 }
@@ -104,6 +130,61 @@ impl TtsEngine for MockTts {
         sleep(Duration::from_millis(400)).await;
         events.send(EngineEvent::TtsFinished).await.map_err(|e| EngineError::Tts(e.to_string()))?;
         Ok(())
+    }
+}
+
+// Simple NLU and Executor for CLI MVP
+pub struct SimpleNlu;
+
+#[async_trait]
+impl NluEngine for SimpleNlu {
+    async fn parse_intent(&self, text: &str) -> Intent {
+        // very naive parsing: look for "timer" and a number + unit
+        let lower = text.to_lowercase();
+        if lower.contains("timer") || lower.contains("remind") {
+            // extract first number
+            let mut num: Option<u64> = None;
+            for tok in lower.split_whitespace() {
+                if let Ok(n) = tok.parse::<u64>() {
+                    num = Some(n);
+                    break;
+                }
+            }
+            let seconds = if lower.contains("minute") {
+                num.unwrap_or(1) * 60
+            } else if lower.contains("second") {
+                num.unwrap_or(10)
+            } else {
+                // default to seconds if unspecified
+                num.unwrap_or(10)
+            };
+            return Intent::Timer { duration_secs: seconds };
+        }
+        Intent::Unknown { text: text.to_string() }
+    }
+}
+
+pub struct SimpleExecutor;
+
+#[async_trait]
+impl Executor for SimpleExecutor {
+    async fn execute(&self, intent: &Intent, events: mpsc::Sender<EngineEvent>) -> Result<String, EngineError> {
+        match intent {
+            Intent::Timer { duration_secs } => {
+                let secs = *duration_secs;
+                let msg = format!("Timer set for {} seconds", secs);
+                events.send(EngineEvent::ExecutionStarted("timer".into())).await.map_err(|e| EngineError::Audio(e.to_string()))?;
+                // Fire-and-forget notification after duration
+                let mut events_clone = events.clone();
+                tokio::spawn(async move {
+                    sleep(Duration::from_secs(secs)).await;
+                    let _ = events_clone.send(EngineEvent::Notification("Timer done".into())).await;
+                    let _ = events_clone.send(EngineEvent::ExecutionFinished("timer".into())).await;
+                });
+                Ok(msg)
+            }
+            Intent::Unknown { .. } => Ok("Okay.".to_string()),
+        }
     }
 }
 

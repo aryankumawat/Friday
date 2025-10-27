@@ -1,4 +1,4 @@
-use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, SessionManager};
+use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, SessionManager, SimpleExecutor, SimpleNlu};
 use clap::Parser;
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -20,7 +20,7 @@ async fn main() {
         .with_max_level(Level::INFO)
         .init();
 
-    let manager = SessionManager::new(MockWake, MockAsr, MockTts);
+    let manager = SessionManager::new(MockWake, MockAsr, MockTts, SimpleNlu, SimpleExecutor);
     let (tx, mut rx) = mpsc::channel::<EngineEvent>(32);
 
     let ui = tokio::spawn(async move {
@@ -29,6 +29,10 @@ async fn main() {
                 EngineEvent::WakeDetected => info!("Wake detected"),
                 EngineEvent::PartialTranscript(p) => info!(partial = %p.text, "Partial"),
                 EngineEvent::FinalTranscript(t) => info!(final_transcript = %t, "Final"),
+                EngineEvent::IntentRecognized(i) => info!(intent = ?i, "Intent"),
+                EngineEvent::ExecutionStarted(name) => info!(execution = %name, "Execution started"),
+                EngineEvent::ExecutionFinished(name) => info!(execution = %name, "Execution finished"),
+                EngineEvent::Notification(msg) => info!(notification = %msg, "Notify"),
                 EngineEvent::TtsStarted => info!("TTS started"),
                 EngineEvent::TtsFinished => info!("TTS finished"),
             }
