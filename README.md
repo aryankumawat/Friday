@@ -24,6 +24,14 @@ cargo run -p assistant-cli -- --tts piper --piper-bin piper --piper-model /path/
 
 Omit `--piper-out` to let Piper handle audio output if configured.
 
+### Whisper ASR (optional)
+
+Build `whisper.cpp` and download a model, then run:
+
+```bash
+cargo run -p assistant-cli -- --asr whisper --whisper-bin ./whisper --whisper-model ./models/ggml-base.bin --whisper-audio /path/to/input.wav
+```
+
 
 You should see logs for wake detection, partial/final transcripts, and TTS.
 

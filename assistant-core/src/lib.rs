@@ -123,6 +123,41 @@ impl AsrEngine for MockAsr {
     }
 }
 
+pub struct WhisperAsr {
+    pub whisper_bin: String,
+    pub model_path: String,
+    pub audio_wav: String,
+}
+
+#[async_trait]
+impl AsrEngine for WhisperAsr {
+    async fn stream_until_silence(&self, events: mpsc::Sender<EngineEvent>) -> Result<String, EngineError> {
+        // For now, transcribe the audio file using whisper.cpp
+        // In the real version, this will stream audio chunks and emit partials
+        let mut cmd = Command::new(&self.whisper_bin);
+        cmd.arg("-m").arg(&self.model_path)
+            .arg("-f").arg(&self.audio_wav)
+            .arg("--output-txt");
+        
+        let output = cmd.output().await.map_err(|e| EngineError::Asr(e.to_string()))?;
+        
+        if !output.status.success() {
+            return Err(EngineError::Asr(format!("whisper failed: {}", String::from_utf8_lossy(&output.stderr))));
+        }
+        
+        let transcript = String::from_utf8(output.stdout).map_err(|e| EngineError::Asr(e.to_string()))?;
+        let transcript = transcript.trim();
+        
+        // Emit as a single final transcript for now
+        events
+            .send(EngineEvent::PartialTranscript(TranscriptFragment { text: transcript.to_string(), is_final: true }))
+            .await
+            .map_err(|e| EngineError::Asr(e.to_string()))?;
+        
+        Ok(transcript.to_string())
+    }
+}
+
 pub struct MockTts;
 #[async_trait]
 impl TtsEngine for MockTts {

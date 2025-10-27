@@ -1,4 +1,4 @@
-use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu};
+use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr};
 use clap::{Parser, ValueEnum};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -6,6 +6,9 @@ use tracing_subscriber::EnvFilter;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
 enum TtsKind { Mock, Piper }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum AsrKind { Mock, Whisper }
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Assistant CLI mock loop", long_about = None)]
@@ -16,6 +19,9 @@ struct Args {
     /// TTS engine to use
     #[arg(long, value_enum, default_value_t = TtsKind::Mock)]
     tts: TtsKind,
+    /// ASR engine to use
+    #[arg(long, value_enum, default_value_t = AsrKind::Mock)]
+    asr: AsrKind,
     /// Path to piper binary
     #[arg(long, default_value = "piper")]
     piper_bin: String,
@@ -25,6 +31,15 @@ struct Args {
     /// Optional output wav path (if empty, piper will play to stdout/audio backend if configured)
     #[arg(long, default_value = "")] 
     piper_out: String,
+    /// Path to whisper binary
+    #[arg(long, default_value = "whisper")]
+    whisper_bin: String,
+    /// Path to whisper model (required for whisper ASR)
+    #[arg(long, default_value = "")]
+    whisper_model: String,
+    /// Input audio file for whisper (required for whisper ASR)
+    #[arg(long, default_value = "")]
+    whisper_audio: String,
 }
 
 #[tokio::main]
@@ -44,7 +59,6 @@ async fn main() {
     };
 
     // SessionManager is generic; to keep using it, we wrap TTS in an enum-like via dynamic dispatch adapter.
-    // For simplicity, use Piper or Mock via a small adapter struct.
     struct TtsAdapter(Box<dyn assistant_core::TtsEngine + Send + Sync>);
     #[async_trait::async_trait]
     impl assistant_core::TtsEngine for TtsAdapter {
@@ -53,7 +67,26 @@ async fn main() {
         }
     }
 
-    let manager = SessionManager::new(MockWake, MockAsr, TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
+    struct AsrAdapter(Box<dyn assistant_core::AsrEngine + Send + Sync>);
+    #[async_trait::async_trait]
+    impl assistant_core::AsrEngine for AsrAdapter {
+        async fn stream_until_silence(&self, events: mpsc::Sender<EngineEvent>) -> Result<String, assistant_core::EngineError> {
+            self.0.stream_until_silence(events).await
+        }
+    }
+
+    let asr_engine: Box<dyn assistant_core::AsrEngine + Send + Sync> = match args.asr {
+        AsrKind::Mock => Box::new(MockAsr),
+        AsrKind::Whisper => {
+            Box::new(WhisperAsr {
+                whisper_bin: args.whisper_bin.clone(),
+                model_path: args.whisper_model.clone(),
+                audio_wav: args.whisper_audio.clone(),
+            })
+        }
+    };
+
+    let manager = SessionManager::new(MockWake, AsrAdapter(asr_engine), TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
     let (tx, mut rx) = mpsc::channel::<EngineEvent>(32);
 
     let ui = tokio::spawn(async move {
