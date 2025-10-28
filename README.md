@@ -41,6 +41,15 @@ Porcupine is a lightweight, offline, commercial-friendly wake word/keyword engin
 3. Test it manually: `./porcupine_demo_mic --input_audio_device_index 0 --keyword_paths /path/to/hey-friday.ppn`.
 4. See CLI usage below to integrate with this project. The CLI expects `--wake porcupine --porcupine-bin <bin-path> --keyword-path <ppn-path>`
 
+Example:
+
+```bash
+cargo run -p assistant-cli -- \
+  --wake porcupine \
+  --porcupine-bin ./porcupine_demo_mic \
+  --keyword-path /path/to/hey-friday.ppn
+```
+
 You should see logs for wake detection, partial/final transcripts, and TTS.
 
 ## Next Steps
