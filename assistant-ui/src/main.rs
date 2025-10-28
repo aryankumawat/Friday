@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use tokio::io::AsyncBufReadExt;
 
 #[tauri::command]
 async fn start_assistant(app: tauri::AppHandle, args: Vec<String>) -> Result<(), String> {

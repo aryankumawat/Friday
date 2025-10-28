@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "identifier": "com.friday.assistant",
   "build": {
-    "frontendDist": "../ui"
+    "frontendDist": "ui"
   },
   "app": {
     "windows": [
