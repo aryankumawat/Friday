@@ -5,13 +5,16 @@ use tokio::io::AsyncBufReadExt;
 
 #[tauri::command]
 async fn start_assistant(app: tauri::AppHandle, args: Vec<String>) -> Result<(), String> {
-    let mut cmd = tokio::process::Command::new("cargo");
-    let mut full_args = vec!["run".to_string(), "-p".to_string(), "assistant-cli".to_string(), "--".to_string(), "run".to_string(), "--ui-events".to_string(), "--sessions".to_string(), "2".to_string()];
+    // Use the compiled binary directly
+    let binary_path = "/Users/aryankumawat/Friday/target/debug/assistant-cli";
+    let mut cmd = tokio::process::Command::new(binary_path);
+    let mut full_args = vec!["run".to_string(), "--ui-events".to_string(), "--sessions".to_string(), "2".to_string()];
     full_args.extend(args);
     cmd.args(full_args);
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
     cmd.current_dir("/Users/aryankumawat/Friday");
+    println!("Spawning assistant CLI...");
     let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn: {}", e))?;
     let stdout = child.stdout.take().ok_or_else(|| "no stdout".to_string())?;
     let mut lines = tokio::io::BufReader::new(stdout).lines();
