@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "assistant-core",
-    "assistant-cli"
+    "assistant-cli",
+    "assistant-ui"
 ]
 
 
