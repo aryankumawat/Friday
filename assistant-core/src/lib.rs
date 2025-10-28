@@ -107,6 +107,31 @@ impl WakeDetector for MockWake {
     }
 }
 
+pub struct PorcupineWake {
+    pub porcupine_bin: String,
+    pub keyword_path: String,
+}
+
+#[async_trait]
+impl WakeDetector for PorcupineWake {
+    async fn wait_for_wake(&self) -> Result<(), EngineError> {
+        // Spawn porcupine with keyword and block until it signals detection (stub: return Ok after delay)
+        let mut cmd = Command::new(&self.porcupine_bin);
+        cmd.arg("--keyword_paths").arg(&self.keyword_path);
+        // For simplicity, run the process and detect 'detected' in stdout (to be improved)
+        let child = cmd.stdout(std::process::Stdio::piped()).spawn().map_err(|e| EngineError::Wake(e.to_string()))?;
+        let mut child_stdout = child.stdout.ok_or_else(|| EngineError::Wake("No stdout from porcupine demo".to_string()))?;
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        let mut lines = BufReader::new(&mut child_stdout).lines();
+        while let Some(line) = lines.next_line().await.map_err(|e| EngineError::Wake(e.to_string()))? {
+            if line.to_lowercase().contains("detected") {
+                return Ok(());
+            }
+        }
+        Err(EngineError::Wake("Porcupine process terminated; no wake detected".to_string()))
+    }
+}
+
 pub struct MockAsr;
 #[async_trait]
 impl AsrEngine for MockAsr {
