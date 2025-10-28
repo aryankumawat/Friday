@@ -53,6 +53,9 @@ struct Args {
     /// Number of sessions to run before exit
     #[arg(short, long, default_value_t = 1)]
     sessions: u32,
+    /// Emit EngineEvent as JSON on stdout for UI integration
+    #[arg(long, default_value_t = false)]
+    ui_events: bool,
     /// Start microphone capture during run
     #[arg(long, default_value_t = false)]
     capture: bool,
@@ -253,8 +256,13 @@ async fn main() {
     let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
     let (tx, mut rx) = mpsc::channel::<EngineEvent>(32);
 
+    let emit_json = args.ui_events;
     let ui = tokio::spawn(async move {
         while let Some(evt) = rx.recv().await {
+            if emit_json {
+                if let Ok(s) = serde_json::to_string(&evt) { println!("{}", s); }
+                continue;
+            }
             match evt {
                 EngineEvent::WakeDetected => info!("Wake detected"),
                 EngineEvent::PartialTranscript(p) => info!(partial = %p.text, "Partial"),

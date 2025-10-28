@@ -13,7 +13,7 @@ pub struct TranscriptFragment {
     pub is_final: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EngineEvent {
     WakeDetected,
     PartialTranscript(TranscriptFragment),
