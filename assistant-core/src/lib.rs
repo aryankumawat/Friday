@@ -274,4 +274,31 @@ impl Executor for SimpleExecutor {
     }
 }
 
+pub fn porcupine_line_has_detection(line: &str) -> bool {
+    let l = line.to_ascii_lowercase();
+    l.contains("detected") || l.contains("wake word detected") || l.contains("keyword detected")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::porcupine_line_has_detection;
+
+    #[test]
+    fn detects_generic_detected() {
+        assert!(porcupine_line_has_detection("[0.123] detected"));
+    }
+
+    #[test]
+    fn detects_phrase_variants() {
+        assert!(porcupine_line_has_detection("Wake word detected"));
+        assert!(porcupine_line_has_detection("KEYWORD DETECTED (index=0)"));
+    }
+
+    #[test]
+    fn ignores_non_detection() {
+        assert!(!porcupine_line_has_detection("listening..."));
+        assert!(!porcupine_line_has_detection("noise level: -36dB"));
+    }
+}
+
 
