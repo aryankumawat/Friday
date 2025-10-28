@@ -12,5 +12,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 async-trait = "0.1"
 cpal = "0.15"
+hound = "3"
 
 

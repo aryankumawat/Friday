@@ -5,6 +5,7 @@ use tokio::time::{sleep, Duration};
 use tokio::process::Command;
 use tracing::{info, instrument};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use hound::WavWriter;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranscriptFragment {
@@ -88,6 +89,53 @@ impl AudioCapture {
         ).map_err(|e| EngineError::Audio(e.to_string()))?;
         stream.play().map_err(|e| EngineError::Audio(e.to_string()))?;
         Ok(stream)
+    }
+
+    pub fn start_record_to_wav(&self, path: &str, duration_secs: u32) -> Result<(), EngineError> {
+        let host = cpal::default_host();
+        let device = host.default_input_device().ok_or_else(|| EngineError::Audio("No default input device".into()))?;
+        let mut supported_configs_range = device.supported_input_configs().map_err(|e| EngineError::Audio(e.to_string()))?;
+        let supported_config = supported_configs_range
+            .find(|cfg| cfg.min_sample_rate().0 <= self.sample_rate && cfg.max_sample_rate().0 >= self.sample_rate)
+            .ok_or_else(|| EngineError::Audio("No supported input config for requested sample rate".into()))?;
+        let config = supported_config.with_sample_rate(cpal::SampleRate(self.sample_rate)).config();
+
+        let spec = hound::WavSpec {
+            channels: config.channels as u16,
+            sample_rate: self.sample_rate,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let writer = std::sync::Arc::new(std::sync::Mutex::new(WavWriter::create(path, spec).map_err(|e| EngineError::Audio(e.to_string()))?));
+
+        let start = std::time::Instant::now();
+        let writer_clone = writer.clone();
+        let stream = device.build_input_stream(
+            &config,
+            move |data: &[f32], _| {
+                if let Ok(mut w) = writer_clone.lock() {
+                    for &s in data {
+                        let v = (s * i16::MAX as f32) as i16;
+                        let _ = w.write_sample(v);
+                    }
+                }
+            },
+            move |err| {
+                eprintln!("audio input error: {err}");
+            },
+            None,
+        ).map_err(|e| EngineError::Audio(e.to_string()))?;
+        stream.play().map_err(|e| EngineError::Audio(e.to_string()))?;
+
+        // Block current thread for duration; in async context caller should spawn_blocking
+        while start.elapsed().as_secs() < duration_secs as u64 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        drop(stream);
+        if let Ok(mut w) = writer.lock() {
+            let _ = w.flush();
+        }
+        Ok(())
     }
 }
 
