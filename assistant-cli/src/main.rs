@@ -17,6 +17,18 @@ enum WakeKind { Mock, Porcupine }
 enum Cmd {
     /// List input audio devices
     Devices,
+    /// Record microphone to WAV
+    Record {
+        /// Output WAV path
+        #[arg(long, default_value = "./out.wav")]
+        out: String,
+        /// Duration seconds
+        #[arg(long, default_value_t = 5)]
+        seconds: u32,
+        /// Sample rate
+        #[arg(long, default_value_t = 16_000)]
+        sample_rate: u32,
+    },
     /// Run assistant (default)
     Run,
 }
@@ -79,11 +91,23 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    if let Some(Cmd::Devices) = args.cmd {
-        for (i, name) in AudioCapture::list_input_devices().iter().enumerate() {
-            println!("{}: {}", i, name);
+    match &args.cmd {
+        Some(Cmd::Devices) => {
+            for (i, name) in AudioCapture::list_input_devices().iter().enumerate() {
+                println!("{}: {}", i, name);
+            }
+            return;
         }
-        return;
+        Some(Cmd::Record { out, seconds, sample_rate }) => {
+            let cap = AudioCapture::new(*sample_rate);
+            if let Err(e) = cap.start_record_to_wav(out, *seconds) {
+                eprintln!("record failed: {e}");
+            } else {
+                println!("recorded {}s to {}", seconds, out);
+            }
+            return;
+        }
+        _ => {}
     }
 
     tracing_subscriber::fmt()
