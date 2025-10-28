@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "identifier": "com.friday.assistant",
   "build": {
-    "devUrl": "http://localhost:1430",
     "frontendDist": "../ui"
   },
   "app": {
