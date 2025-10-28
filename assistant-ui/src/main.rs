@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
 use tokio::io::AsyncBufReadExt;
 
 #[tauri::command]
