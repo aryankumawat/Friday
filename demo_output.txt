@@ -1,0 +1,61 @@
+🎤 Starting Friday Voice Assistant...
+warning: unused import: `info`
+ --> assistant-core/src/lib.rs:6:15
+  |
+6 | use tracing::{info, instrument};
+  |               ^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: variable does not need to be mutable
+   --> assistant-core/src/lib.rs:172:34
+    |
+172 |     pub async fn run_once(&self, mut event_tx: mpsc::Sender<EngineEvent>) -> Result<(), EngineError> {
+    |                                  ----^^^^^^^^
+    |                                  |
+    |                                  help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+   --> assistant-core/src/lib.rs:383:21
+    |
+383 |                 let mut events_clone = events.clone();
+    |                     ----^^^^^^^^^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: `assistant-core` (lib) generated 3 warnings (run `cargo fix --lib -p assistant-core` to apply 3 suggestions)
+warning: unused import: `WakeDetector`
+ --> assistant-cli/src/main.rs:1:179
+  |
+1 | ...isperAsr, PorcupineWake, AudioCapture, AsrEngine, TtsEngine, WakeDetector};
+  |                                                                 ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `TtsEngine`
+ --> assistant-cli/src/main.rs:1:168
+  |
+1 | ...impleNlu, WhisperAsr, PorcupineWake, AudioCapture, AsrEngine, TtsEngine, WakeDetector};
+  |                                                                  ^^^^^^^^^
+
+warning: `assistant-cli` (bin "assistant-cli") generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running `target/debug/assistant-cli --ui-events --sessions 2`
+"WakeDetected"
+{"PartialTranscript":{"text":"hello","is_final":false}}
+{"PartialTranscript":{"text":"hello there","is_final":false}}
+{"PartialTranscript":{"text":"hello there assistant","is_final":false}}
+{"FinalTranscript":"hello there assistant"}
+{"IntentRecognized":{"Unknown":{"text":"hello there assistant"}}}
+"TtsStarted"
+"TtsFinished"
+"WakeDetected"
+{"PartialTranscript":{"text":"hello","is_final":false}}
+{"PartialTranscript":{"text":"hello there","is_final":false}}
+{"PartialTranscript":{"text":"hello there assistant","is_final":false}}
+{"FinalTranscript":"hello there assistant"}
+{"IntentRecognized":{"Unknown":{"text":"hello there assistant"}}}
+"TtsStarted"
+"TtsFinished"
