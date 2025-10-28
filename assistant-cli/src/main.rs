@@ -28,6 +28,12 @@ struct Args {
     /// Path to porcupine keyword (.ppn) file (for porcupine wake)
     #[arg(long, default_value = "")]
     keyword_path: String,
+    /// Porcupine input device index
+    #[arg(long)]
+    porcupine_device_index: Option<i32>,
+    /// Porcupine sensitivity (0.0-1.0)
+    #[arg(long)]
+    porcupine_sensitivity: Option<f32>,
     /// TTS engine to use
     #[arg(long, value_enum, default_value_t = TtsKind::Mock)]
     tts: TtsKind,
@@ -108,7 +114,12 @@ async fn main() {
 
     let wake_engine: Box<dyn assistant_core::WakeDetector + Send + Sync> = match args.wake {
         WakeKind::Mock => Box::new(MockWake),
-        WakeKind::Porcupine => Box::new(PorcupineWake { porcupine_bin: args.porcupine_bin.clone(), keyword_path: args.keyword_path.clone() }),
+        WakeKind::Porcupine => Box::new(PorcupineWake {
+            porcupine_bin: args.porcupine_bin.clone(),
+            keyword_path: args.keyword_path.clone(),
+            device_index: args.porcupine_device_index,
+            sensitivity: args.porcupine_sensitivity,
+        }),
     };
 
     let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
