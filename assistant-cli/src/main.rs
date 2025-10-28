@@ -29,6 +29,18 @@ enum Cmd {
         #[arg(long, default_value_t = 16_000)]
         sample_rate: u32,
     },
+    /// End-to-end: wait for wake → record → whisper → TTS
+    Wakeflow {
+        /// Recording duration after wake (seconds)
+        #[arg(long, default_value_t = 4)]
+        seconds: u32,
+        /// Sample rate
+        #[arg(long, default_value_t = 16_000)]
+        sample_rate: u32,
+        /// Output wav path (optional; default temp)
+        #[arg(long, default_value = "")]
+        out: String,
+    },
     /// Run assistant (default)
     Run,
 }
@@ -104,6 +116,60 @@ async fn main() {
                 eprintln!("record failed: {e}");
             } else {
                 println!("recorded {}s to {}", seconds, out);
+            }
+            return;
+        }
+        Some(Cmd::Wakeflow { seconds, sample_rate, out }) => {
+            // Build wake
+            let wake: Box<dyn assistant_core::WakeDetector + Send + Sync> = match args.wake {
+                WakeKind::Mock => Box::new(MockWake),
+                WakeKind::Porcupine => Box::new(PorcupineWake {
+                    porcupine_bin: args.porcupine_bin.clone(),
+                    keyword_path: args.keyword_path.clone(),
+                    device_index: args.porcupine_device_index,
+                    sensitivity: args.porcupine_sensitivity,
+                }),
+            };
+            println!("Waiting for wake...");
+            if let Err(e) = wake.wait_for_wake().await { eprintln!("wake error: {e}"); return; }
+
+            // Record
+            let cap = AudioCapture::new(*sample_rate);
+            let out_path = if out.is_empty() { "./wakeflow.wav".to_string() } else { out.clone() };
+            println!("Recording {}s to {}", seconds, out_path);
+            let rec_res = tokio::task::spawn_blocking({
+                let out_path = out_path.clone(); let seconds = *seconds; move || {
+                    cap.start_record_to_wav(&out_path, seconds)
+                }
+            }).await;
+            match rec_res {
+                Ok(Ok(())) => {},
+                Ok(Err(e)) => { eprintln!("record failed: {e}"); return; },
+                Err(e) => { eprintln!("join error: {e}"); return; },
+            }
+
+            // ASR (requires whisper)
+            if args.asr != AsrKind::Whisper || args.whisper_model.is_empty() {
+                eprintln!("whisper ASR not configured; provide --asr whisper --whisper-model <path>");
+                return;
+            }
+            let (tx, _rx) = mpsc::channel::<EngineEvent>(8);
+            let asr = WhisperAsr { whisper_bin: args.whisper_bin.clone(), model_path: args.whisper_model.clone(), audio_wav: out_path.clone() };
+            match asr.stream_until_silence(tx).await {
+                Ok(text) => {
+                    println!("Transcript: {}", text);
+                    // TTS
+                    let tts: Box<dyn assistant_core::TtsEngine + Send + Sync> = match args.tts {
+                        TtsKind::Mock => Box::new(MockTts),
+                        TtsKind::Piper => {
+                            let out = if args.piper_out.is_empty() { None } else { Some(args.piper_out.clone()) };
+                            Box::new(PiperTts { piper_bin: args.piper_bin.clone(), model_path: args.piper_model.clone(), output_wav: out })
+                        }
+                    };
+                    let (etx, _erx) = mpsc::channel::<EngineEvent>(8);
+                    let _ = tts.speak(&format!("You said: {}", text), etx).await;
+                }
+                Err(e) => eprintln!("asr error: {e}"),
             }
             return;
         }
