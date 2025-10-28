@@ -4,5 +4,6 @@ members = [
     "assistant-cli",
     "assistant-ui"
 ]
+resolver = "2"
 
 
