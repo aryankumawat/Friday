@@ -110,6 +110,8 @@ impl WakeDetector for MockWake {
 pub struct PorcupineWake {
     pub porcupine_bin: String,
     pub keyword_path: String,
+    pub device_index: Option<i32>,
+    pub sensitivity: Option<f32>,
 }
 
 #[async_trait]
@@ -118,6 +120,13 @@ impl WakeDetector for PorcupineWake {
         // Spawn porcupine with keyword and block until it signals detection (stub: return Ok after delay)
         let mut cmd = Command::new(&self.porcupine_bin);
         cmd.arg("--keyword_paths").arg(&self.keyword_path);
+        if let Some(idx) = self.device_index {
+            cmd.arg("--input_audio_device_index").arg(idx.to_string());
+        }
+        if let Some(s) = self.sensitivity {
+            // Many demos expect a list; single value works as one sensitivity
+            cmd.arg("--sensitivities").arg(format!("{}", s));
+        }
         // For simplicity, run the process and detect 'detected' in stdout (to be improved)
         let child = cmd.stdout(std::process::Stdio::piped()).spawn().map_err(|e| EngineError::Wake(e.to_string()))?;
         let mut child_stdout = child.stdout.ok_or_else(|| EngineError::Wake("No stdout from porcupine demo".to_string()))?;
