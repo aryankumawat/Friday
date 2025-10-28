@@ -1,5 +1,5 @@
-use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake};
-use clap::{Parser, ValueEnum};
+use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake, AudioCapture};
+use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
 use tracing_subscriber::EnvFilter;
@@ -13,9 +13,19 @@ enum AsrKind { Mock, Whisper }
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
 enum WakeKind { Mock, Porcupine }
 
+#[derive(Subcommand, Debug)]
+enum Cmd {
+    /// List input audio devices
+    Devices,
+    /// Run assistant (default)
+    Run,
+}
+
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Assistant CLI mock loop", long_about = None)]
 struct Args {
+    #[command(subcommand)]
+    cmd: Option<Cmd>,
     /// Number of sessions to run before exit
     #[arg(short, long, default_value_t = 1)]
     sessions: u32,
@@ -63,6 +73,13 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+    if let Some(Cmd::Devices) = args.cmd {
+        for (i, name) in AudioCapture::list_input_devices().iter().enumerate() {
+            println!("{}: {}", i, name);
+        }
+        return;
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .with_max_level(Level::INFO)
