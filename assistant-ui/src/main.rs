@@ -8,7 +8,7 @@ async fn start_assistant(app: tauri::AppHandle, args: Vec<String>) -> Result<(),
     // Use the compiled binary directly
     let binary_path = "/Users/aryankumawat/Friday/target/debug/assistant-cli";
     let mut cmd = tokio::process::Command::new(binary_path);
-    let mut full_args = vec!["run".to_string(), "--ui-events".to_string(), "--sessions".to_string(), "2".to_string()];
+    let mut full_args = vec!["--ui-events".to_string(), "--sessions".to_string(), "2".to_string()];
     full_args.extend(args);
     cmd.args(full_args);
     cmd.stdout(std::process::Stdio::piped());
