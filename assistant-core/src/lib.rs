@@ -350,9 +350,19 @@ pub fn porcupine_line_has_detection(line: &str) -> bool {
     l.contains("detected") || l.contains("wake word detected") || l.contains("keyword detected")
 }
 
+pub fn simple_energy_vad(frame: &[f32], threshold: f32) -> bool {
+    if frame.is_empty() { return false; }
+    let mut sumsq = 0.0f32;
+    for &s in frame {
+        sumsq += s * s;
+    }
+    let rms = (sumsq / frame.len() as f32).sqrt();
+    rms >= threshold
+}
+
 #[cfg(test)]
 mod tests {
-    use super::porcupine_line_has_detection;
+    use super::{porcupine_line_has_detection, simple_energy_vad};
 
     #[test]
     fn detects_generic_detected() {
@@ -369,6 +379,18 @@ mod tests {
     fn ignores_non_detection() {
         assert!(!porcupine_line_has_detection("listening..."));
         assert!(!porcupine_line_has_detection("noise level: -36dB"));
+    }
+
+    #[test]
+    fn vad_detects_loud() {
+        let frame = vec![0.2f32; 480];
+        assert!(simple_energy_vad(&frame, 0.1));
+    }
+
+    #[test]
+    fn vad_ignores_quiet() {
+        let frame = vec![0.01f32; 480];
+        assert!(!simple_energy_vad(&frame, 0.05));
     }
 }
 
