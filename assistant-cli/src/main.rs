@@ -10,12 +10,24 @@ enum TtsKind { Mock, Piper }
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
 enum AsrKind { Mock, Whisper }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum WakeKind { Mock, Porcupine }
+
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Assistant CLI mock loop", long_about = None)]
 struct Args {
     /// Number of sessions to run before exit
     #[arg(short, long, default_value_t = 1)]
     sessions: u32,
+    /// Wake word engine
+    #[arg(long, value_enum, default_value_t = WakeKind::Mock)]
+    wake: WakeKind,
+    /// Path to porcupine binary (for porcupine wake)
+    #[arg(long, default_value = "porcupine_demo_mic")]
+    porcupine_bin: String,
+    /// Path to porcupine keyword (.ppn) file (for porcupine wake)
+    #[arg(long, default_value = "")]
+    keyword_path: String,
     /// TTS engine to use
     #[arg(long, value_enum, default_value_t = TtsKind::Mock)]
     tts: TtsKind,
