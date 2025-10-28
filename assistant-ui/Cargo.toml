@@ -2,9 +2,13 @@
 name = "assistant-ui"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-shell = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "io-util"] }
 serde_json = "1"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
