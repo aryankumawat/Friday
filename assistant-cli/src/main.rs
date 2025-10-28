@@ -29,6 +29,12 @@ struct Args {
     /// Number of sessions to run before exit
     #[arg(short, long, default_value_t = 1)]
     sessions: u32,
+    /// Start microphone capture during run
+    #[arg(long, default_value_t = false)]
+    capture: bool,
+    /// Capture sample rate
+    #[arg(long, default_value_t = 16_000)]
+    sample_rate: u32,
     /// Wake word engine
     #[arg(long, value_enum, default_value_t = WakeKind::Mock)]
     wake: WakeKind,
@@ -138,6 +144,21 @@ async fn main() {
             sensitivity: args.porcupine_sensitivity,
         }),
     };
+
+    // Optionally start audio capture and keep stream alive
+    let _stream_guard = if args.capture {
+        let cap = AudioCapture::new(args.sample_rate);
+        match cap.start_logging_input() {
+            Ok(stream) => {
+                info!("audio capture started at {} Hz", args.sample_rate);
+                Some(stream)
+            }
+            Err(e) => {
+                eprintln!("failed to start audio capture: {e}");
+                None
+            }
+        }
+    } else { None };
 
     let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
     let (tx, mut rx) = mpsc::channel::<EngineEvent>(32);
