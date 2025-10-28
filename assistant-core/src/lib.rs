@@ -4,6 +4,7 @@ use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 use tokio::process::Command;
 use tracing::{info, instrument};
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranscriptFragment {
@@ -49,6 +50,45 @@ pub trait AsrEngine: Send + Sync {
 #[async_trait]
 pub trait TtsEngine: Send + Sync {
     async fn speak(&self, text: &str, events: mpsc::Sender<EngineEvent>) -> Result<(), EngineError>;
+}
+
+pub struct AudioCapture {
+    pub sample_rate: u32,
+}
+
+impl AudioCapture {
+    pub fn new(sample_rate: u32) -> Self { Self { sample_rate } }
+
+    pub fn list_input_devices() -> Vec<String> {
+        let host = cpal::default_host();
+        match host.input_devices() {
+            Ok(iter) => iter.filter_map(|d| d.name().ok()).collect(),
+            Err(_) => vec![],
+        }
+    }
+
+    pub fn start_logging_input(&self) -> Result<cpal::Stream, EngineError> {
+        let host = cpal::default_host();
+        let device = host.default_input_device().ok_or_else(|| EngineError::Audio("No default input device".into()))?;
+        let mut supported_configs_range = device.supported_input_configs().map_err(|e| EngineError::Audio(e.to_string()))?;
+        let supported_config = supported_configs_range
+            .find(|cfg| cfg.min_sample_rate().0 <= self.sample_rate && cfg.max_sample_rate().0 >= self.sample_rate)
+            .ok_or_else(|| EngineError::Audio("No supported input config for requested sample rate".into()))?;
+        let config = supported_config.with_sample_rate(cpal::SampleRate(self.sample_rate)).config();
+
+        let stream = device.build_input_stream(
+            &config,
+            move |_data: &[f32], _| {
+                // In future: push to ring buffer
+            },
+            move |err| {
+                eprintln!("audio input error: {err}");
+            },
+            None,
+        ).map_err(|e| EngineError::Audio(e.to_string()))?;
+        stream.play().map_err(|e| EngineError::Audio(e.to_string()))?;
+        Ok(stream)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
