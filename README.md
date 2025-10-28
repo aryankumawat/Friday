@@ -32,6 +32,14 @@ Build `whisper.cpp` and download a model, then run:
 cargo run -p assistant-cli -- --asr whisper --whisper-bin ./whisper --whisper-model ./models/ggml-base.bin --whisper-audio /path/to/input.wav
 ```
 
+### Porcupine Wake Word (optional)
+
+Porcupine is a lightweight, offline, commercial-friendly wake word/keyword engine. Register for a free account and download your target keyword from Picovoice Console: https://console.picovoice.ai/
+
+1. Download `porcupine_demo_mic` for your OS from https://github.com/Picovoice/porcupine/tree/master/demo/python or install via `pip install pvporcupine` (for advanced use).
+2. Download the .ppn file(s) for your keyword (e.g., `hey-friday_en_raspberry-pi_v2_2_0.ppn`).
+3. Test it manually: `./porcupine_demo_mic --input_audio_device_index 0 --keyword_paths /path/to/hey-friday.ppn`.
+4. See CLI usage below to integrate with this project. The CLI expects `--wake porcupine --porcupine-bin <bin-path> --keyword-path <ppn-path>`
 
 You should see logs for wake detection, partial/final transcripts, and TTS.
 
