@@ -1,35 +1,14 @@
 {
+  "productName": "Friday Assistant",
+  "version": "0.1.0",
+  "identifier": "com.friday.assistant",
   "build": {
-    "beforeBuildCommand": "",
-    "beforeDevCommand": "",
-    "devPath": "../ui",
-    "distDir": "../ui"
+    "devUrl": "http://localhost:1430",
+    "frontendDist": "../ui"
   },
-  "package": {
-    "productName": "Friday Assistant",
-    "version": "0.1.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false
-    },
-    "bundle": {
-      "identifier": "com.friday.assistant",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ]
-    },
-    "security": {
-      "csp": null
-    },
+  "app": {
     "windows": [
       {
-        "fullscreen": false,
-        "resizable": true,
         "title": "Friday Assistant",
         "width": 800,
         "height": 600

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tauri = { version = "1", features = ["api-all"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync"] }
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-shell = { version = "2", features = ["shell-open"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "io-util"] }
 serde_json = "1"
