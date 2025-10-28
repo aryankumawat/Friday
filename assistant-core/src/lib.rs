@@ -117,27 +117,49 @@ pub struct PorcupineWake {
 #[async_trait]
 impl WakeDetector for PorcupineWake {
     async fn wait_for_wake(&self) -> Result<(), EngineError> {
-        // Spawn porcupine with keyword and block until it signals detection (stub: return Ok after delay)
         let mut cmd = Command::new(&self.porcupine_bin);
         cmd.arg("--keyword_paths").arg(&self.keyword_path);
         if let Some(idx) = self.device_index {
             cmd.arg("--input_audio_device_index").arg(idx.to_string());
         }
         if let Some(s) = self.sensitivity {
-            // Many demos expect a list; single value works as one sensitivity
             cmd.arg("--sensitivities").arg(format!("{}", s));
         }
-        // For simplicity, run the process and detect 'detected' in stdout (to be improved)
-        let child = cmd.stdout(std::process::Stdio::piped()).spawn().map_err(|e| EngineError::Wake(e.to_string()))?;
-        let mut child_stdout = child.stdout.ok_or_else(|| EngineError::Wake("No stdout from porcupine demo".to_string()))?;
         use tokio::io::{AsyncBufReadExt, BufReader};
-        let mut lines = BufReader::new(&mut child_stdout).lines();
-        while let Some(line) = lines.next_line().await.map_err(|e| EngineError::Wake(e.to_string()))? {
-            if line.to_lowercase().contains("detected") {
-                return Ok(());
+        use tokio::time::timeout;
+        let mut child = cmd
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| EngineError::Wake(e.to_string()))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| EngineError::Wake("No stdout from porcupine demo".to_string()))?;
+        let mut lines = BufReader::new(stdout).lines();
+        let deadline = Duration::from_secs(300);
+        let res = timeout(deadline, async {
+            while let Some(line) = lines.next_line().await.map_err(|e| EngineError::Wake(e.to_string()))? {
+                if porcupine_line_has_detection(&line) {
+                    return Ok(()) as Result<(), EngineError>;
+                }
+            }
+            // Process ended; check exit status
+            let status = child.wait().await.map_err(|e| EngineError::Wake(e.to_string()))?;
+            if status.success() {
+                Err(EngineError::Wake("Porcupine ended without detection".to_string()))
+            } else {
+                Err(EngineError::Wake(format!("Porcupine exited with status {status}")))
+            }
+        }).await;
+        match res {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(e)) => Err(e),
+            Err(_) => {
+                let _ = child.kill().await; // best-effort
+                Err(EngineError::Wake("Porcupine timed out without detection".to_string()))
             }
         }
-        Err(EngineError::Wake("Porcupine process terminated; no wake detected".to_string()))
     }
 }
 
