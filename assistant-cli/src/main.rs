@@ -1,4 +1,4 @@
-use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr};
+use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake};
 use clap::{Parser, ValueEnum};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -70,7 +70,7 @@ async fn main() {
         }
     };
 
-    // SessionManager is generic; to keep using it, we wrap TTS in an enum-like via dynamic dispatch adapter.
+    // Adapters to allow dynamic engines with generic SessionManager
     struct TtsAdapter(Box<dyn assistant_core::TtsEngine + Send + Sync>);
     #[async_trait::async_trait]
     impl assistant_core::TtsEngine for TtsAdapter {
@@ -87,6 +87,14 @@ async fn main() {
         }
     }
 
+    struct WakeAdapter(Box<dyn assistant_core::WakeDetector + Send + Sync>);
+    #[async_trait::async_trait]
+    impl assistant_core::WakeDetector for WakeAdapter {
+        async fn wait_for_wake(&self) -> Result<(), assistant_core::EngineError> {
+            self.0.wait_for_wake().await
+        }
+    }
+
     let asr_engine: Box<dyn assistant_core::AsrEngine + Send + Sync> = match args.asr {
         AsrKind::Mock => Box::new(MockAsr),
         AsrKind::Whisper => {
@@ -98,7 +106,12 @@ async fn main() {
         }
     };
 
-    let manager = SessionManager::new(MockWake, AsrAdapter(asr_engine), TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
+    let wake_engine: Box<dyn assistant_core::WakeDetector + Send + Sync> = match args.wake {
+        WakeKind::Mock => Box::new(MockWake),
+        WakeKind::Porcupine => Box::new(PorcupineWake { porcupine_bin: args.porcupine_bin.clone(), keyword_path: args.keyword_path.clone() }),
+    };
+
+    let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
     let (tx, mut rx) = mpsc::channel::<EngineEvent>(32);
 
     let ui = tokio::spawn(async move {
