@@ -79,10 +79,47 @@
     }
 
     listen('assistant:event', (e) => appendEvent(e.payload));
+    listen('assistant:doctor', (e) => {
+      const el = document.getElementById('doctor');
+      el.textContent += e.payload + '\n';
+    });
 
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('startBtn').addEventListener('click', start);
+      document.getElementById('doctorBtn').addEventListener('click', async () => {
+        document.getElementById('doctor').textContent = '';
+        const args = buildArgsForDoctor();
+        await invoke('run_doctor', { args });
+      });
     });
+
+    function buildArgsForDoctor() {
+      const args = [];
+      const wake = document.getElementById('wake').value;
+      if (wake === 'porcupine') {
+        const porcupineBin = document.getElementById('porcupine_bin').value.trim();
+        const keywordPath = document.getElementById('keyword_path').value.trim();
+        if (porcupineBin) { args.push("--porcupine-bin", porcupineBin); }
+        if (keywordPath) { args.push("--keyword-path", keywordPath); }
+      }
+      const asr = document.getElementById('asr').value;
+      if (asr === 'whisper') {
+        const whisperBin = document.getElementById('whisper_bin').value.trim();
+        const whisperModel = document.getElementById('whisper_model').value.trim();
+        const whisperAudio = document.getElementById('whisper_audio').value.trim();
+        if (whisperBin) { args.push("--whisper-bin", whisperBin); }
+        if (whisperModel) { args.push("--whisper-model", whisperModel); }
+        if (whisperAudio) { args.push("--whisper-audio", whisperAudio); }
+      }
+      const tts = document.getElementById('tts').value;
+      if (tts === 'piper') {
+        const piperBin = document.getElementById('piper_bin').value.trim();
+        const piperModel = document.getElementById('piper_model').value.trim();
+        if (piperBin) { args.push("--piper-bin", piperBin); }
+        if (piperModel) { args.push("--piper-model", piperModel); }
+      }
+      return args;
+    }
   </script>
 </head>
 <body>
@@ -98,6 +135,11 @@
   <div class="section">
     <h2>Events</h2>
     <pre id="events"></pre>
+  </div>
+  <div class="section">
+    <h2>Doctor</h2>
+    <button id="doctorBtn">Run Doctor</button>
+    <pre id="doctor"></pre>
   </div>
   <div class="section">
     <h2>Settings</h2>
