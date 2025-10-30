@@ -103,11 +103,58 @@ struct Args {
     /// Input audio file for whisper (required for whisper ASR)
     #[arg(long, default_value = "")]
     whisper_audio: String,
+    /// Optional path to a JSON config with default args
+    #[arg(long, default_value = "")]
+    config: String,
 }
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
+    let mut args = Args::parse();
+    // Load JSON config (if provided) and fill missing values
+    if !args.config.is_empty() {
+        if let Ok(cfg_text) = std::fs::read_to_string(&args.config) {
+            #[derive(serde::Deserialize)]
+            struct Cfg {
+                sessions: Option<u32>,
+                ui_events: Option<bool>,
+                capture: Option<bool>,
+                sample_rate: Option<u32>,
+                wake: Option<String>,
+                porcupine_bin: Option<String>,
+                keyword_path: Option<String>,
+                porcupine_device_index: Option<i32>,
+                porcupine_sensitivity: Option<f32>,
+                tts: Option<String>,
+                asr: Option<String>,
+                piper_bin: Option<String>,
+                piper_model: Option<String>,
+                piper_out: Option<String>,
+                whisper_bin: Option<String>,
+                whisper_model: Option<String>,
+                whisper_audio: Option<String>,
+            }
+            if let Ok(cfg) = serde_json::from_str::<Cfg>(&cfg_text) {
+                if let Some(v) = cfg.sessions { if args.sessions == 1 { args.sessions = v; } }
+                if let Some(v) = cfg.ui_events { if !args.ui_events { args.ui_events = v; } }
+                if let Some(v) = cfg.capture { if !args.capture { args.capture = v; } }
+                if let Some(v) = cfg.sample_rate { if args.sample_rate == 16_000 { args.sample_rate = v; } }
+                if let Some(v) = cfg.wake { if args.wake == WakeKind::Mock { args.wake = match v.as_str() { "porcupine" => WakeKind::Porcupine, _ => WakeKind::Mock } } }
+                if let Some(v) = cfg.porcupine_bin { if args.porcupine_bin == "porcupine_demo_mic" { args.porcupine_bin = v; } }
+                if let Some(v) = cfg.keyword_path { if args.keyword_path.is_empty() { args.keyword_path = v; } }
+                if let Some(v) = cfg.porcupine_device_index { if args.porcupine_device_index.is_none() { args.porcupine_device_index = Some(v); } }
+                if let Some(v) = cfg.porcupine_sensitivity { if args.porcupine_sensitivity.is_none() { args.porcupine_sensitivity = Some(v); } }
+                if let Some(v) = cfg.tts { if args.tts == TtsKind::Mock { args.tts = match v.as_str() { "piper" => TtsKind::Piper, _ => TtsKind::Mock } } }
+                if let Some(v) = cfg.asr { if args.asr == AsrKind::Mock { args.asr = match v.as_str() { "whisper" => AsrKind::Whisper, _ => AsrKind::Mock } } }
+                if let Some(v) = cfg.piper_bin { if args.piper_bin == "piper" { args.piper_bin = v; } }
+                if let Some(v) = cfg.piper_model { if args.piper_model.is_empty() { args.piper_model = v; } }
+                if let Some(v) = cfg.piper_out { if args.piper_out.is_empty() { args.piper_out = v; } }
+                if let Some(v) = cfg.whisper_bin { if args.whisper_bin == "whisper" { args.whisper_bin = v; } }
+                if let Some(v) = cfg.whisper_model { if args.whisper_model.is_empty() { args.whisper_model = v; } }
+                if let Some(v) = cfg.whisper_audio { if args.whisper_audio.is_empty() { args.whisper_audio = v; } }
+            }
+        }
+    }
     match &args.cmd {
         Some(Cmd::Doctor) => {
             // Basic checks for external deps and system devices
