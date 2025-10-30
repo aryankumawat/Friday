@@ -19,8 +19,46 @@
       if (running) return;
       running = true;
       document.getElementById('status').textContent = 'Running';
-      // Example args: you can pass CLI args here, e.g. ["--wake","mock"]
-      await invoke('start_assistant', { args: ["--wake","mock","--sessions","1"] });
+      const args = buildArgsFromSettings();
+      await invoke('start_assistant', { args });
+    }
+
+    function buildArgsFromSettings() {
+      const args = ["--ui-events"]; // always request UI events
+      const sessions = document.getElementById('sessions').value.trim();
+      if (sessions) { args.push("--sessions", sessions); }
+
+      const wake = document.getElementById('wake').value;
+      args.push("--wake", wake);
+      if (wake === 'porcupine') {
+        const porcupineBin = document.getElementById('porcupine_bin').value.trim();
+        const keywordPath = document.getElementById('keyword_path').value.trim();
+        if (porcupineBin) { args.push("--porcupine-bin", porcupineBin); }
+        if (keywordPath) { args.push("--keyword-path", keywordPath); }
+      }
+
+      const asr = document.getElementById('asr').value;
+      args.push("--asr", asr);
+      if (asr === 'whisper') {
+        const whisperBin = document.getElementById('whisper_bin').value.trim();
+        const whisperModel = document.getElementById('whisper_model').value.trim();
+        const whisperAudio = document.getElementById('whisper_audio').value.trim();
+        if (whisperBin) { args.push("--whisper-bin", whisperBin); }
+        if (whisperModel) { args.push("--whisper-model", whisperModel); }
+        if (whisperAudio) { args.push("--whisper-audio", whisperAudio); }
+      }
+
+      const tts = document.getElementById('tts').value;
+      args.push("--tts", tts);
+      if (tts === 'piper') {
+        const piperBin = document.getElementById('piper_bin').value.trim();
+        const piperModel = document.getElementById('piper_model').value.trim();
+        const piperOut = document.getElementById('piper_out').value.trim();
+        if (piperBin) { args.push("--piper-bin", piperBin); }
+        if (piperModel) { args.push("--piper-model", piperModel); }
+        if (piperOut) { args.push("--piper-out", piperOut); }
+      }
+      return args;
     }
 
     function appendEvent(line) {
@@ -63,7 +101,44 @@
   </div>
   <div class="section">
     <h2>Settings</h2>
-    <div>Coming soon...</div>
+    <div style="display:grid;grid-template-columns: 200px 1fr; gap: 8px; align-items:center;">
+      <label>Sessions</label>
+      <input id="sessions" type="number" min="1" value="1" />
+
+      <label>Wake</label>
+      <select id="wake">
+        <option value="mock">mock</option>
+        <option value="porcupine">porcupine</option>
+      </select>
+      <label>Porcupine Bin</label>
+      <input id="porcupine_bin" type="text" placeholder="./porcupine_demo_mic" />
+      <label>Keyword Path</label>
+      <input id="keyword_path" type="text" placeholder="/path/to/hey-friday.ppn" />
+
+      <label>ASR</label>
+      <select id="asr">
+        <option value="mock">mock</option>
+        <option value="whisper">whisper</option>
+      </select>
+      <label>Whisper Bin</label>
+      <input id="whisper_bin" type="text" placeholder="./whisper.cpp/whisper" />
+      <label>Whisper Model</label>
+      <input id="whisper_model" type="text" placeholder="./whisper.cpp/models/ggml-base.bin" />
+      <label>Whisper Audio</label>
+      <input id="whisper_audio" type="text" placeholder="./wakeflow.wav" />
+
+      <label>TTS</label>
+      <select id="tts">
+        <option value="mock">mock</option>
+        <option value="piper">piper</option>
+      </select>
+      <label>Piper Bin</label>
+      <input id="piper_bin" type="text" placeholder="./piper_macos_arm64" />
+      <label>Piper Model</label>
+      <input id="piper_model" type="text" placeholder="./en_US-lessac-medium.onnx" />
+      <label>Piper Out (optional)</label>
+      <input id="piper_out" type="text" placeholder="/tmp/out.wav" />
+    </div>
   </div>
 </body>
 </html>
