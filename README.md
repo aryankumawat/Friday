@@ -33,6 +33,17 @@ For a more visual flow, you can emit UI-friendly events:
 cargo run -p assistant-cli -- --ui-events
 ```
 
+Run a quick environment health check:
+
+```bash
+cargo run -p assistant-cli -- doctor
+# Add flags to verify real engines, e.g.:
+cargo run -p assistant-cli -- doctor \
+  --piper-bin ./piper_macos_arm64 --piper-model ./en_US-lessac-medium.onnx \
+  --whisper-bin ./whisper.cpp/whisper --whisper-model ./whisper.cpp/models/ggml-base.bin \
+  --porcupine-bin ./porcupine_demo_mic --keyword-path /path/to/hey-friday.ppn
+```
+
 ## Optional Integrations
 
 Friday supports real engines in addition to the mock pipeline.

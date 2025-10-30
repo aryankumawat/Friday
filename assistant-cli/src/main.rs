@@ -1,4 +1,4 @@
-use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake, AudioCapture, AsrEngine, TtsEngine, WakeDetector};
+use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake, AudioCapture, AsrEngine};
 use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -15,6 +15,8 @@ enum WakeKind { Mock, Porcupine }
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
+    /// Environment checks for binaries, models and audio devices
+    Doctor,
     /// List input audio devices
     Devices,
     /// Record microphone to WAV
@@ -107,6 +109,55 @@ struct Args {
 async fn main() {
     let args = Args::parse();
     match &args.cmd {
+        Some(Cmd::Doctor) => {
+            // Basic checks for external deps and system devices
+            println!("Friday Doctor\n================");
+            // Audio input device
+            let devices = AudioCapture::list_input_devices();
+            if devices.is_empty() { println!("[x] No input devices found"); } else { println!("[ok] {} input devices detected", devices.len()); }
+            // Piper
+            if !args.piper_model.is_empty() {
+                let status = tokio::process::Command::new(&args.piper_bin)
+                    .arg("--help")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .status().await;
+                match status { Ok(s) if s.success() || s.code().is_some() => println!("[ok] Piper binary reachable: {}", args.piper_bin), _ => println!("[x] Piper binary not found or not runnable: {}", args.piper_bin) }
+                if std::path::Path::new(&args.piper_model).exists() { println!("[ok] Piper model present: {}", args.piper_model); } else { println!("[x] Piper model missing: {}", args.piper_model); }
+            } else {
+                println!("[i] Piper not configured (set --piper-bin/--piper-model)");
+            }
+            // Whisper
+            if !args.whisper_model.is_empty() {
+                let status = tokio::process::Command::new(&args.whisper_bin)
+                    .arg("-h")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .status().await;
+                match status { Ok(s) if s.success() || s.code().is_some() => println!("[ok] Whisper binary reachable: {}", args.whisper_bin), _ => println!("[x] Whisper binary not found or not runnable: {}", args.whisper_bin) }
+                if std::path::Path::new(&args.whisper_model).exists() { println!("[ok] Whisper model present: {}", args.whisper_model); } else { println!("[x] Whisper model missing: {}", args.whisper_model); }
+                if !args.whisper_audio.is_empty() {
+                    if std::path::Path::new(&args.whisper_audio).exists() { println!("[ok] Whisper input audio present: {}", args.whisper_audio); } else { println!("[x] Whisper input audio missing: {}", args.whisper_audio); }
+                } else {
+                    println!("[i] Whisper input audio not set (--whisper-audio)");
+                }
+            } else {
+                println!("[i] Whisper not configured (set --whisper-bin/--whisper-model)");
+            }
+            // Porcupine
+            if !args.keyword_path.is_empty() {
+                let status = tokio::process::Command::new(&args.porcupine_bin)
+                    .arg("--help")
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .status().await;
+                match status { Ok(s) if s.success() || s.code().is_some() => println!("[ok] Porcupine binary reachable: {}", args.porcupine_bin), _ => println!("[x] Porcupine binary not found or not runnable: {}", args.porcupine_bin) }
+                if std::path::Path::new(&args.keyword_path).exists() { println!("[ok] Porcupine keyword present: {}", args.keyword_path); } else { println!("[x] Porcupine keyword missing: {}", args.keyword_path); }
+            } else {
+                println!("[i] Porcupine not configured (set --porcupine-bin/--keyword-path)");
+            }
+            return;
+        }
         Some(Cmd::Devices) => {
             for (i, name) in AudioCapture::list_input_devices().iter().enumerate() {
                 println!("{}: {}", i, name);

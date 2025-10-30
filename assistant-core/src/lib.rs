@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 use tokio::process::Command;
-use tracing::{info, instrument};
+use tracing::{instrument};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use hound::WavWriter;
 
@@ -169,7 +169,7 @@ impl<W: WakeDetector, A: AsrEngine, T: TtsEngine, N: NluEngine, E: Executor> Ses
     }
 
     #[instrument(skip(self))]
-    pub async fn run_once(&self, mut event_tx: mpsc::Sender<EngineEvent>) -> Result<(), EngineError> {
+    pub async fn run_once(&self, event_tx: mpsc::Sender<EngineEvent>) -> Result<(), EngineError> {
         self.wake.wait_for_wake().await?;
         event_tx.send(EngineEvent::WakeDetected).await.map_err(|e| EngineError::Wake(e.to_string()))?;
 
@@ -380,7 +380,7 @@ impl Executor for SimpleExecutor {
                 let msg = format!("Timer set for {} seconds", secs);
                 events.send(EngineEvent::ExecutionStarted("timer".into())).await.map_err(|e| EngineError::Audio(e.to_string()))?;
                 // Fire-and-forget notification after duration
-                let mut events_clone = events.clone();
+                let events_clone = events.clone();
                 tokio::spawn(async move {
                     sleep(Duration::from_secs(secs)).await;
                     let _ = events_clone.send(EngineEvent::Notification("Timer done".into())).await;
