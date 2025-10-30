@@ -1,63 +1,106 @@
-# Friday Assistant (Scaffold)
+# Friday Assistant
 
-Rust workspace with a core library and CLI showcasing a mock wake → ASR → TTS loop.
+Friday is a Rust workspace for a local, privacy-first voice assistant. It bundles a core library, a CLI, and a desktop UI shell, demonstrating an end-to-end pipeline: wake word detection → automatic speech recognition (ASR) → intent handling → text-to-speech (TTS).
 
-## Structure
+## Features
 
-- `assistant-core`: core traits and a session manager with mock engines
+- Offline-first architecture with optional integrations
+- pluggable engines for Wake, ASR, and TTS (mock and real)
+- event-driven session manager with clear boundaries and traits
+- CLI for fast iteration and debugging
+- Tauri-based desktop shell (WIP) for visual feedback and controls
+
+## Workspace Layout
+
+- `assistant-core`: core traits, session manager, mock engines, and plumbing
 - `assistant-cli`: CLI that runs a sample session and logs events
+- `assistant-ui`: Tauri-based UI shell (dev preview)
 
-## Build & Run
+## Getting Started
 
-Ensure Rust toolchain is installed (`rustup`), then:
+Prerequisites:
+- Rust toolchain via `rustup`
+
+Run the sample pipeline using the CLI (mock engines):
 
 ```bash
 cargo run -p assistant-cli -- --sessions 2
 ```
-### Piper TTS (optional)
 
-Install `piper` and a voice model, then run:
-
-```bash
-cargo run -p assistant-cli -- --tts piper --piper-bin piper --piper-model /path/to/voice.onnx --piper-out /tmp/out.wav
-```
-
-Omit `--piper-out` to let Piper handle audio output if configured.
-
-### Whisper ASR (optional)
-
-Build `whisper.cpp` and download a model, then run:
+For a more visual flow, you can emit UI-friendly events:
 
 ```bash
-cargo run -p assistant-cli -- --asr whisper --whisper-bin ./whisper --whisper-model ./models/ggml-base.bin --whisper-audio /path/to/input.wav
+cargo run -p assistant-cli -- --ui-events
 ```
 
-### Porcupine Wake Word (optional)
+## Optional Integrations
 
-Porcupine is a lightweight, offline, commercial-friendly wake word/keyword engine. Register for a free account and download your target keyword from Picovoice Console: https://console.picovoice.ai/
+Friday supports real engines in addition to the mock pipeline.
 
-1. Download `porcupine_demo_mic` for your OS from https://github.com/Picovoice/porcupine/tree/master/demo/python or install via `pip install pvporcupine` (for advanced use).
-2. Download the .ppn file(s) for your keyword (e.g., `hey-friday_en_raspberry-pi_v2_2_0.ppn`).
-3. Test it manually: `./porcupine_demo_mic --input_audio_device_index 0 --keyword_paths /path/to/hey-friday.ppn`.
-4. See CLI usage below to integrate with this project. The CLI expects `--wake porcupine --porcupine-bin <bin-path> --keyword-path <ppn-path>`
+### Piper TTS
 
-Example:
+Install `piper` and a voice model, then:
 
 ```bash
 cargo run -p assistant-cli -- \
-  --wake porcupine \
-  --porcupine-bin ./porcupine_demo_mic \
-  --keyword-path /path/to/hey-friday.ppn
+  --tts piper \
+  --piper-bin piper \
+  --piper-model /path/to/voice.onnx \
+  --piper-out /tmp/out.wav
 ```
+
+Omit `--piper-out` to allow Piper to handle system audio output if configured.
+
+### Whisper ASR
+
+Build `whisper.cpp` and download a model, then:
+
+```bash
+cargo run -p assistant-cli -- \
+  --asr whisper \
+  --whisper-bin ./whisper \
+  --whisper-model ./models/ggml-base.bin \
+  --whisper-audio /path/to/input.wav
+```
+
+### Porcupine Wake Word
+
+Porcupine is a lightweight, offline, commercial-friendly wake-word engine. Create a free account and download your keyword from Picovoice Console (`https://console.picovoice.ai/`).
+
+1. Download `porcupine_demo_mic` for your OS from `https://github.com/Picovoice/porcupine/tree/master/demo/python` or install via `pip install pvporcupine`.
+2. Download the `.ppn` file for your keyword (e.g., `hey-friday_en_raspberry-pi_v2_2_0.ppn`).
+3. Verify it manually:
+   ```bash
+   ./porcupine_demo_mic --input_audio_device_index 0 --keyword_paths /path/to/hey-friday.ppn
+   ```
+4. Run the Friday CLI with Porcupine:
+   ```bash
+   cargo run -p assistant-cli -- \
+     --wake porcupine \
+     --porcupine-bin ./porcupine_demo_mic \
+     --keyword-path /path/to/hey-friday.ppn
+   ```
 
 You should see logs for wake detection, partial/final transcripts, and TTS.
 
-## Next Steps
+## Tauri UI (Dev Preview)
 
-- Replace mock engines with real wake word, ASR, and TTS implementations
-- Add tests and benchmarks in `assistant-core`
-- Create a Tauri UI shell
+The UI crate (`assistant-ui`) provides a Tauri shell for visualization and controls.
 
-## Intents (mock)
+```bash
+cargo tauri dev
+```
 
-- Timer: phrases like "set a timer for 10 seconds/minutes" → schedules a notification and speaks back confirmation.
+This launches a desktop window that can display pipeline events and basic controls.
+
+## Roadmap
+
+Planned work includes real-time microphone capture, robust wake-word detection, streaming Whisper integration, richer intents, and multi-turn dialogue management. See `NEXT_STEPS.md` for a detailed plan.
+
+## Mock Intents
+
+- Timer: phrases like "set a timer for 10 seconds/minutes" → schedules a notification and speaks a confirmation.
+
+## License
+
+This repository is provided under a permissive open-source license. Review `LICENSE` if present, or set one appropriate for your use case.
