@@ -126,6 +126,7 @@ dependencies = [
  "assistant-core",
  "async-trait",
  "clap",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",

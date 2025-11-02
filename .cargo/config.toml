@@ -1,0 +1,43 @@
+# Cargo configuration for Friday Voice Assistant
+
+[build]
+# Use all available CPU cores for compilation
+# jobs = 0  # 0 means use all cores, but some versions don't support this
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+
+# Optimize for development builds
+[profile.dev]
+# Enable some optimizations for dependencies to improve performance
+opt-level = 1
+# Keep debug info for better debugging
+debug = true
+# Faster linking
+incremental = true
+
+# Optimize release builds for performance
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Custom profile for development with better performance
+[profile.dev-opt]
+inherits = "dev"
+opt-level = 2
+debug = 1
+
+# Alias for common commands
+[alias]
+b = "build"
+c = "check"
+t = "test"
+r = "run"
+fmt-all = "fmt --all"
+clippy-all = "clippy --workspace -- -D warnings"
