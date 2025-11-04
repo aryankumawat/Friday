@@ -7,6 +7,9 @@ use tracing::{instrument};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use hound::WavWriter;
 
+pub mod audio;
+pub mod realtime_wake;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranscriptFragment {
     pub text: String,

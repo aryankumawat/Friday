@@ -1,4 +1,5 @@
 use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake, AudioCapture, AsrEngine};
+use assistant_core::realtime_wake::{RealtimeWake, EnergyWake};
 use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -11,7 +12,7 @@ enum TtsKind { Mock, Piper }
 enum AsrKind { Mock, Whisper }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-enum WakeKind { Mock, Porcupine }
+enum WakeKind { Mock, Porcupine, Realtime, Energy }
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
@@ -230,6 +231,8 @@ async fn main() {
                     device_index: args.porcupine_device_index,
                     sensitivity: args.porcupine_sensitivity,
                 }),
+                WakeKind::Realtime => Box::new(RealtimeWake::new()),
+                WakeKind::Energy => Box::new(EnergyWake::new()),
             };
             println!("Waiting for wake...");
             if let Err(e) = wake.wait_for_wake().await { eprintln!("wake error: {e}"); return; }
@@ -334,6 +337,8 @@ async fn main() {
             device_index: args.porcupine_device_index,
             sensitivity: args.porcupine_sensitivity,
         }),
+        WakeKind::Realtime => Box::new(RealtimeWake::new()),
+        WakeKind::Energy => Box::new(EnergyWake::new()),
     };
 
     // Optionally start audio capture and keep stream alive

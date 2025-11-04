@@ -10,6 +10,8 @@ help:
 	@echo "  test          - Run all tests"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  dev           - Run CLI in development mode"
+	@echo "  dev-realtime  - Run CLI with real-time wake detection"
+	@echo "  dev-energy    - Run CLI with energy-based wake detection"
 	@echo "  dev-ui        - Run Tauri UI in development mode"
 	@echo "  install-deps  - Install system dependencies"
 	@echo "  check         - Run cargo check on all crates"
@@ -34,6 +36,14 @@ release:
 dev:
 	@echo "🎤 Starting Friday Assistant (CLI)..."
 	cargo run -p assistant-cli -- --ui-events --sessions 2
+
+dev-realtime:
+	@echo "🎤 Starting Friday Assistant with real-time wake detection..."
+	cargo run -p assistant-cli -- --wake realtime --sessions 1
+
+dev-energy:
+	@echo "🎤 Starting Friday Assistant with energy-based wake detection..."
+	cargo run -p assistant-cli -- --wake energy --sessions 1
 
 dev-ui:
 	@echo "🖥️  Starting Friday Assistant (UI)..."
