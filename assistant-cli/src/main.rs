@@ -1,6 +1,7 @@
 use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake, AudioCapture, AsrEngine};
 use assistant_core::realtime_wake::{RealtimeWake, EnergyWake};
 use assistant_core::enhanced_nlu::EnhancedNlu;
+use assistant_core::enhanced_executor::EnhancedExecutor;
 use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -17,6 +18,9 @@ enum WakeKind { Mock, Porcupine, Realtime, Energy }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
 enum NluKind { Simple, Enhanced }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum ExecutorKind { Simple, Enhanced }
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
@@ -75,6 +79,9 @@ struct Args {
     /// NLU engine to use
     #[arg(long, value_enum, default_value_t = NluKind::Enhanced)]
     nlu: NluKind,
+    /// Executor engine to use
+    #[arg(long, value_enum, default_value_t = ExecutorKind::Enhanced)]
+    executor: ExecutorKind,
     /// Path to porcupine binary (for porcupine wake)
     #[arg(long, default_value = "porcupine_demo_mic")]
     porcupine_bin: String,
@@ -377,7 +384,21 @@ async fn main() {
         }
     }
 
-    let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), NluAdapter(nlu_engine), SimpleExecutor);
+    // Create Executor engine
+    let executor_engine: Box<dyn assistant_core::Executor + Send + Sync> = match args.executor {
+        ExecutorKind::Simple => Box::new(SimpleExecutor),
+        ExecutorKind::Enhanced => Box::new(EnhancedExecutor::new()),
+    };
+
+    struct ExecutorAdapter(Box<dyn assistant_core::Executor + Send + Sync>);
+    #[async_trait::async_trait]
+    impl assistant_core::Executor for ExecutorAdapter {
+        async fn execute(&self, intent: &assistant_core::Intent, events: mpsc::Sender<EngineEvent>) -> Result<String, assistant_core::EngineError> {
+            self.0.execute(intent, events).await
+        }
+    }
+
+    let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), NluAdapter(nlu_engine), ExecutorAdapter(executor_engine));
     let (tx, mut rx) = mpsc::channel::<EngineEvent>(32);
 
     let emit_json = args.ui_events;

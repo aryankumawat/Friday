@@ -12,6 +12,7 @@ help:
 	@echo "  dev           - Run CLI in development mode"
 	@echo "  dev-realtime  - Run CLI with real-time wake detection"
 	@echo "  dev-energy    - Run CLI with energy-based wake detection"
+	@echo "  dev-enhanced  - Run CLI with enhanced NLU and executor"
 	@echo "  dev-ui        - Run Tauri UI in development mode"
 	@echo "  install-deps  - Install system dependencies"
 	@echo "  check         - Run cargo check on all crates"
@@ -44,6 +45,10 @@ dev-realtime:
 dev-energy:
 	@echo "🎤 Starting Friday Assistant with energy-based wake detection..."
 	cargo run -p assistant-cli -- --wake energy --sessions 1
+
+dev-enhanced:
+	@echo "🧠 Starting Friday Assistant with enhanced NLU and executor..."
+	cargo run -p assistant-cli -- --nlu enhanced --executor enhanced --sessions 1
 
 dev-ui:
 	@echo "🖥️  Starting Friday Assistant (UI)..."
