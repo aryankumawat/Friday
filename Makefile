@@ -19,6 +19,8 @@ help:
 	@echo "  format        - Format code with rustfmt"
 	@echo "  lint          - Run clippy linter"
 	@echo "  doctor        - Run health check"
+	@echo "  config-init   - Initialize configuration file"
+	@echo "  config-show   - Show current configuration"
 	@echo "  setup-whisper - Download and build Whisper.cpp"
 	@echo "  setup-piper   - Download Piper TTS"
 	@echo "  setup-ui      - Setup UI dependencies"
@@ -75,6 +77,15 @@ lint:
 doctor:
 	@echo "🏥 Running health check..."
 	cargo run -p assistant-cli -- doctor
+
+# Configuration management
+config-init:
+	@echo "⚙️  Initializing configuration..."
+	cargo run -p assistant-cli config init
+
+config-show:
+	@echo "⚙️  Showing current configuration..."
+	cargo run -p assistant-cli config show
 
 # Setup targets
 install-deps:

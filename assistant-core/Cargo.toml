@@ -16,5 +16,9 @@ hound = "3"
 rand = "0.8"
 regex = "1.10"
 chrono = { version = "0.4", features = ["serde"] }
+dirs = "5.0"
+
+[dev-dependencies]
+tempfile = "3.8"
 
 

@@ -2,6 +2,7 @@ use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionM
 use assistant_core::realtime_wake::{RealtimeWake, EnergyWake};
 use assistant_core::enhanced_nlu::EnhancedNlu;
 use assistant_core::enhanced_executor::EnhancedExecutor;
+use assistant_core::config::FridayConfig;
 use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -54,6 +55,25 @@ enum Cmd {
     },
     /// Run assistant (default)
     Run,
+    /// Configuration management
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ConfigAction {
+    /// Show current configuration
+    Show,
+    /// List available profiles
+    Profiles,
+    /// Set active profile
+    SetProfile { name: String },
+    /// Create default configuration file
+    Init,
+    /// Validate configuration
+    Validate,
 }
 
 #[derive(Parser, Debug)]
@@ -217,6 +237,79 @@ async fn main() {
                 if std::path::Path::new(&args.keyword_path).exists() { println!("[ok] Porcupine keyword present: {}", args.keyword_path); } else { println!("[x] Porcupine keyword missing: {}", args.keyword_path); }
             } else {
                 println!("[i] Porcupine not configured (set --porcupine-bin/--keyword-path)");
+            }
+            return;
+        }
+        Some(Cmd::Config { action }) => {
+            match action {
+                ConfigAction::Show => {
+                    match FridayConfig::load_default() {
+                        Ok(config) => {
+                            println!("{}", serde_json::to_string_pretty(&config).unwrap());
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to load configuration: {}", e);
+                        }
+                    }
+                }
+                ConfigAction::Profiles => {
+                    match FridayConfig::load_default() {
+                        Ok(config) => {
+                            println!("Available profiles:");
+                            for profile in config.list_profiles() {
+                                let active = if config.active_profile.as_ref() == Some(&profile.name) { " (active)" } else { "" };
+                                println!("  {} - {}{}", profile.name, profile.description, active);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to load configuration: {}", e);
+                        }
+                    }
+                }
+                ConfigAction::SetProfile { name } => {
+                    match FridayConfig::load_default() {
+                        Ok(mut config) => {
+                            match config.apply_profile(name) {
+                                Ok(_) => {
+                                    match config.save_default() {
+                                        Ok(_) => println!("Profile '{}' activated", name),
+                                        Err(e) => eprintln!("Failed to save configuration: {}", e),
+                                    }
+                                }
+                                Err(e) => eprintln!("Failed to set profile: {}", e),
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to load configuration: {}", e);
+                        }
+                    }
+                }
+                ConfigAction::Init => {
+                    let config = FridayConfig::default();
+                    match config.save_default() {
+                        Ok(_) => {
+                            if let Ok(path) = FridayConfig::default_config_path() {
+                                println!("Configuration initialized at: {}", path.display());
+                            } else {
+                                println!("Configuration initialized");
+                            }
+                        }
+                        Err(e) => eprintln!("Failed to initialize configuration: {}", e),
+                    }
+                }
+                ConfigAction::Validate => {
+                    match FridayConfig::load_default() {
+                        Ok(config) => {
+                            match config.validate() {
+                                Ok(_) => println!("Configuration is valid"),
+                                Err(e) => eprintln!("Configuration validation failed: {}", e),
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to load configuration: {}", e);
+                        }
+                    }
+                }
             }
             return;
         }
