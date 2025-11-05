@@ -1,5 +1,6 @@
 use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake, AudioCapture, AsrEngine};
 use assistant_core::realtime_wake::{RealtimeWake, EnergyWake};
+use assistant_core::enhanced_nlu::EnhancedNlu;
 use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -13,6 +14,9 @@ enum AsrKind { Mock, Whisper }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
 enum WakeKind { Mock, Porcupine, Realtime, Energy }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum NluKind { Simple, Enhanced }
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
@@ -68,6 +72,9 @@ struct Args {
     /// Wake word engine
     #[arg(long, value_enum, default_value_t = WakeKind::Mock)]
     wake: WakeKind,
+    /// NLU engine to use
+    #[arg(long, value_enum, default_value_t = NluKind::Enhanced)]
+    nlu: NluKind,
     /// Path to porcupine binary (for porcupine wake)
     #[arg(long, default_value = "porcupine_demo_mic")]
     porcupine_bin: String,
@@ -356,7 +363,21 @@ async fn main() {
         }
     } else { None };
 
-    let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), SimpleNlu, SimpleExecutor);
+    // Create NLU engine
+    let nlu_engine: Box<dyn assistant_core::NluEngine + Send + Sync> = match args.nlu {
+        NluKind::Simple => Box::new(SimpleNlu),
+        NluKind::Enhanced => Box::new(EnhancedNlu::new()),
+    };
+
+    struct NluAdapter(Box<dyn assistant_core::NluEngine + Send + Sync>);
+    #[async_trait::async_trait]
+    impl assistant_core::NluEngine for NluAdapter {
+        async fn parse_intent(&self, text: &str) -> assistant_core::Intent {
+            self.0.parse_intent(text).await
+        }
+    }
+
+    let manager = SessionManager::new(WakeAdapter(wake_engine), AsrAdapter(asr_engine), TtsAdapter(tts_engine), NluAdapter(nlu_engine), SimpleExecutor);
     let (tx, mut rx) = mpsc::channel::<EngineEvent>(32);
 
     let emit_json = args.ui_events;

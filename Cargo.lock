@@ -141,6 +141,7 @@ dependencies = [
  "cpal",
  "hound",
  "rand 0.8.5",
+ "regex",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
