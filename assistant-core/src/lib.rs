@@ -19,6 +19,7 @@ pub mod dialogue_manager;
 pub mod memory_manager;
 pub mod voice_training;
 pub mod analytics;
+pub mod advanced_config;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranscriptFragment {
