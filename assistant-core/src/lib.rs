@@ -15,6 +15,10 @@ pub mod config;
 pub mod streaming_asr;
 pub mod plugin_system;
 pub mod plugin_executor;
+pub mod dialogue_manager;
+pub mod memory_manager;
+pub mod voice_training;
+pub mod analytics;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranscriptFragment {
