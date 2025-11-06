@@ -12,6 +12,7 @@ pub mod realtime_wake;
 pub mod enhanced_nlu;
 pub mod enhanced_executor;
 pub mod config;
+pub mod streaming_asr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranscriptFragment {

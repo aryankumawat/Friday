@@ -3,6 +3,7 @@ use assistant_core::realtime_wake::{RealtimeWake, EnergyWake};
 use assistant_core::enhanced_nlu::EnhancedNlu;
 use assistant_core::enhanced_executor::EnhancedExecutor;
 use assistant_core::config::FridayConfig;
+use assistant_core::streaming_asr::StreamingAsr;
 use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -12,7 +13,7 @@ use tracing_subscriber::EnvFilter;
 enum TtsKind { Mock, Piper }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-enum AsrKind { Mock, Whisper }
+enum AsrKind { Mock, Whisper, Streaming }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
 enum WakeKind { Mock, Porcupine, Realtime, Energy }
@@ -433,6 +434,13 @@ async fn main() {
                 model_path: args.whisper_model.clone(),
                 audio_wav: args.whisper_audio.clone(),
             })
+        }
+        AsrKind::Streaming => {
+            let mut streaming_asr = StreamingAsr::new();
+            if !args.whisper_model.is_empty() && !args.whisper_bin.is_empty() {
+                streaming_asr = streaming_asr.with_whisper(args.whisper_bin.clone(), args.whisper_model.clone());
+            }
+            Box::new(streaming_asr)
         }
     };
 
