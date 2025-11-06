@@ -4,6 +4,7 @@ use assistant_core::enhanced_nlu::EnhancedNlu;
 use assistant_core::enhanced_executor::EnhancedExecutor;
 use assistant_core::config::FridayConfig;
 use assistant_core::streaming_asr::StreamingAsr;
+use assistant_core::plugin_executor::{PluginExecutor, PluginExecutorBuilder};
 use clap::{Parser, ValueEnum, Subcommand};
 use tokio::sync::mpsc;
 use tracing::{info, Level};
@@ -22,7 +23,7 @@ enum WakeKind { Mock, Porcupine, Realtime, Energy }
 enum NluKind { Simple, Enhanced }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-enum ExecutorKind { Simple, Enhanced }
+enum ExecutorKind { Simple, Enhanced, Plugin }
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
@@ -61,6 +62,11 @@ enum Cmd {
         #[command(subcommand)]
         action: ConfigAction,
     },
+    /// Plugin management
+    Plugins {
+        #[command(subcommand)]
+        action: PluginAction,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -75,6 +81,14 @@ enum ConfigAction {
     Init,
     /// Validate configuration
     Validate,
+}
+
+#[derive(Subcommand, Debug)]
+enum PluginAction {
+    /// List available plugins
+    List,
+    /// Show plugin information
+    Info { name: String },
 }
 
 #[derive(Parser, Debug)]
@@ -101,7 +115,7 @@ struct Args {
     #[arg(long, value_enum, default_value_t = NluKind::Enhanced)]
     nlu: NluKind,
     /// Executor engine to use
-    #[arg(long, value_enum, default_value_t = ExecutorKind::Enhanced)]
+    #[arg(long, value_enum, default_value_t = ExecutorKind::Plugin)]
     executor: ExecutorKind,
     /// Path to porcupine binary (for porcupine wake)
     #[arg(long, default_value = "porcupine_demo_mic")]
@@ -314,6 +328,34 @@ async fn main() {
             }
             return;
         }
+        Some(Cmd::Plugins { action }) => {
+            match action {
+                PluginAction::List => {
+                    let mut plugin_executor = PluginExecutor::new(SimpleExecutor);
+                    match plugin_executor.initialize().await {
+                        Ok(_) => {
+                            println!("Available plugins:");
+                            let plugins = plugin_executor.list_plugins();
+                            if plugins.is_empty() {
+                                println!("  No plugins loaded");
+                            } else {
+                                for plugin in plugins {
+                                    println!("  {}", plugin);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to initialize plugin system: {}", e);
+                        }
+                    }
+                }
+                PluginAction::Info { name } => {
+                    println!("Plugin information for: {}", name);
+                    println!("  (Plugin info command not yet implemented)");
+                }
+            }
+            return;
+        }
         Some(Cmd::Devices) => {
             for (i, name) in AudioCapture::list_input_devices().iter().enumerate() {
                 println!("{}: {}", i, name);
@@ -489,6 +531,15 @@ async fn main() {
     let executor_engine: Box<dyn assistant_core::Executor + Send + Sync> = match args.executor {
         ExecutorKind::Simple => Box::new(SimpleExecutor),
         ExecutorKind::Enhanced => Box::new(EnhancedExecutor::new()),
+        ExecutorKind::Plugin => {
+            let mut plugin_executor = PluginExecutor::new(EnhancedExecutor::new());
+            if let Err(e) = plugin_executor.initialize().await {
+                eprintln!("Failed to initialize plugin executor: {}", e);
+                Box::new(EnhancedExecutor::new())
+            } else {
+                Box::new(plugin_executor)
+            }
+        }
     };
 
     struct ExecutorAdapter(Box<dyn assistant_core::Executor + Send + Sync>);

@@ -13,6 +13,8 @@ pub mod enhanced_nlu;
 pub mod enhanced_executor;
 pub mod config;
 pub mod streaming_asr;
+pub mod plugin_system;
+pub mod plugin_executor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranscriptFragment {

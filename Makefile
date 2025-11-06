@@ -14,6 +14,7 @@ help:
 	@echo "  dev-energy    - Run CLI with energy-based wake detection"
 	@echo "  dev-enhanced  - Run CLI with enhanced NLU and executor"
 	@echo "  dev-streaming - Run CLI with streaming ASR and VAD"
+	@echo "  dev-plugins   - Run CLI with plugin system enabled"
 	@echo "  dev-ui        - Run Tauri UI in development mode"
 	@echo "  install-deps  - Install system dependencies"
 	@echo "  check         - Run cargo check on all crates"
@@ -56,6 +57,10 @@ dev-enhanced:
 dev-streaming:
 	@echo "🎙️  Starting Friday Assistant with streaming ASR..."
 	cargo run -p assistant-cli -- --asr streaming --nlu enhanced --executor enhanced --sessions 1
+
+dev-plugins:
+	@echo "🔌 Starting Friday Assistant with plugin system..."
+	cargo run -p assistant-cli -- --executor plugin --nlu enhanced --sessions 1
 
 dev-ui:
 	@echo "🖥️  Starting Friday Assistant (UI)..."
