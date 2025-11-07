@@ -1,5 +1,6 @@
 use assistant_core::{EngineEvent, MockAsr, MockTts, MockWake, PiperTts, SessionManager, SimpleExecutor, SimpleNlu, WhisperAsr, PorcupineWake, AudioCapture, AsrEngine};
 use assistant_core::realtime_wake::{RealtimeWake, EnergyWake};
+use assistant_core::audio_wake::AudioWake;
 use assistant_core::enhanced_nlu::EnhancedNlu;
 use assistant_core::enhanced_executor::EnhancedExecutor;
 use assistant_core::config::FridayConfig;
@@ -494,8 +495,18 @@ async fn main() {
             device_index: args.porcupine_device_index,
             sensitivity: args.porcupine_sensitivity,
         }),
-        WakeKind::Realtime => Box::new(RealtimeWake::new()),
-        WakeKind::Energy => Box::new(EnergyWake::new()),
+        WakeKind::Realtime => {
+            // Use real audio-based wake detection
+            Box::new(AudioWake::new()
+                .with_threshold(0.02) // Lower threshold for voice detection
+                .with_trigger_duration(500)) // 500ms of sustained sound
+        },
+        WakeKind::Energy => {
+            // Use real audio-based wake detection with higher threshold
+            Box::new(AudioWake::new()
+                .with_threshold(0.05) // Higher threshold for loud sounds
+                .with_trigger_duration(300)) // 300ms of sustained sound
+        },
     };
 
     // Optionally start audio capture and keep stream alive

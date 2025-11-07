@@ -9,6 +9,7 @@ use hound::WavWriter;
 
 pub mod audio;
 pub mod realtime_wake;
+pub mod audio_wake;
 pub mod enhanced_nlu;
 pub mod enhanced_executor;
 pub mod config;
