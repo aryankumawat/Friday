@@ -161,6 +161,7 @@ impl AnalyticsManager {
         interaction_count: u32,
         platform: String,
     ) -> Result<(), AnalyticsError> {
+        let intent_type_clone = intent_type.clone();
         let usage = UsageAnalytics {
             timestamp: current_timestamp(),
             session_id,
@@ -178,7 +179,7 @@ impl AnalyticsManager {
         self.usage_data.push(usage);
         self.cleanup_old_entries().await?;
         
-        debug!("Recorded usage analytics for intent: {}", intent_type);
+        debug!("Recorded usage analytics for intent: {}", intent_type_clone);
         Ok(())
     }
 
