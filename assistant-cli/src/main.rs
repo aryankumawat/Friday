@@ -498,14 +498,14 @@ async fn main() {
         WakeKind::Realtime => {
             // Use real audio-based wake detection
             Box::new(AudioWake::new()
-                .with_threshold(0.02) // Lower threshold for voice detection
-                .with_trigger_duration(500)) // 500ms of sustained sound
+                .with_threshold(0.01) // Very sensitive for voice detection
+                .with_trigger_duration(200)) // 200ms of sustained sound
         },
         WakeKind::Energy => {
-            // Use real audio-based wake detection with higher threshold
+            // Use real audio-based wake detection - VERY SENSITIVE
             Box::new(AudioWake::new()
-                .with_threshold(0.05) // Higher threshold for loud sounds
-                .with_trigger_duration(300)) // 300ms of sustained sound
+                .with_threshold(0.02) // Much lower threshold - easier to trigger
+                .with_trigger_duration(150)) // Only 150ms needed!
         },
     };
 

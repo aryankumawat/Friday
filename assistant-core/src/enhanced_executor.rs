@@ -342,6 +342,21 @@ impl Executor for EnhancedExecutor {
         debug!("Executing intent: {:?}", intent);
         
         match intent {
+            Intent::Greeting { user_name } => {
+                events.send(EngineEvent::ExecutionStarted("greeting".into())).await
+                    .map_err(|e| EngineError::Audio(e.to_string()))?;
+                
+                let response = if let Some(name) = user_name {
+                    format!("Hey {}, how's it going?", name)
+                } else {
+                    "Hey there, how's it going?".to_string()
+                };
+                
+                events.send(EngineEvent::ExecutionFinished("greeting".into())).await
+                    .map_err(|e| EngineError::Audio(e.to_string()))?;
+                
+                Ok(response)
+            }
             Intent::Timer { duration_secs } => {
                 self.execute_timer(*duration_secs, events).await
             }

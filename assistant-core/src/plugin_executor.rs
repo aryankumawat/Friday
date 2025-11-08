@@ -107,6 +107,15 @@ impl Executor for PluginExecutor {
         debug!("Plugin executor processing intent: {:?}", intent);
         
         match intent {
+            Intent::Greeting { user_name } => {
+                // Handle greeting directly
+                let response = if let Some(name) = user_name {
+                    format!("Hey {}, how's it going?", name)
+                } else {
+                    "Hey there, how's it going?".to_string()
+                };
+                Ok(response)
+            }
             Intent::Unknown { text } => {
                 // Try plugin execution first
                 if let Some(response) = self.try_plugin_execution(text, events.clone()).await {

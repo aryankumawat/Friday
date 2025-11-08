@@ -156,6 +156,7 @@ impl AudioCapture {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Intent {
+    Greeting { user_name: Option<String> },
     Timer { duration_secs: u64 },
     Unknown { text: String },
 }
@@ -390,6 +391,14 @@ pub struct SimpleExecutor;
 impl Executor for SimpleExecutor {
     async fn execute(&self, intent: &Intent, events: mpsc::Sender<EngineEvent>) -> Result<String, EngineError> {
         match intent {
+            Intent::Greeting { user_name } => {
+                let response = if let Some(name) = user_name {
+                    format!("Hey {}, how's it going?", name)
+                } else {
+                    "Hey there, how's it going?".to_string()
+                };
+                Ok(response)
+            }
             Intent::Timer { duration_secs } => {
                 let secs = *duration_secs;
                 let msg = format!("Timer set for {} seconds", secs);

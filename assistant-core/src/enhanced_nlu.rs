@@ -7,6 +7,7 @@ use tracing::{debug, info};
 /// Enhanced intent types beyond basic timer
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EnhancedIntent {
+    Greeting { user_name: Option<String> },
     Timer { duration_secs: u64, label: Option<String> },
     Weather { location: Option<String> },
     AppLaunch { app_name: String },
@@ -56,6 +57,9 @@ impl EnhancedNlu {
     }
 
     fn initialize_patterns(&mut self) {
+        // Greeting patterns - FIRST so they match before others
+        self.add_greeting_patterns();
+        
         // Timer patterns
         self.add_timer_patterns();
         
@@ -70,6 +74,20 @@ impl EnhancedNlu {
         
         // Query patterns
         self.add_query_patterns();
+    }
+
+    fn add_greeting_patterns(&mut self) {
+        let greeting_patterns = vec![
+            (r"(?i)(?:hey|hi|hello|yo)\s+(?:friday|assistant)", 0.95),
+            (r"(?i)(?:good\s+)?(?:morning|afternoon|evening)\s+friday", 0.9),
+            (r"(?i)what'?s\s+up\s+friday", 0.9),
+        ];
+
+        for (pattern_str, confidence) in greeting_patterns {
+            if let Ok(pattern) = regex::Regex::new(pattern_str) {
+                self.add_pattern("greeting", pattern, confidence, None);
+            }
+        }
     }
 
     fn add_timer_patterns(&mut self) {
@@ -300,6 +318,10 @@ impl EnhancedNlu {
 
     fn build_enhanced_intent(&self, intent_type: &str, params: HashMap<String, String>) -> EnhancedIntent {
         match intent_type {
+            "greeting" => {
+                // For now, hardcode the user name - in a real system this would come from user profile
+                EnhancedIntent::Greeting { user_name: Some("Aryan".to_string()) }
+            }
             "timer" => {
                 let duration_secs = if let (Some(num_str), Some(unit)) = (params.get("number"), params.get("unit")) {
                     if let Ok(num) = num_str.parse::<u64>() {
@@ -361,6 +383,9 @@ impl NluEngine for EnhancedNlu {
                 
                 // Convert enhanced intent back to basic Intent for compatibility
                 match enhanced_intent {
+                    EnhancedIntent::Greeting { user_name } => {
+                        Intent::Greeting { user_name }
+                    }
                     EnhancedIntent::Timer { duration_secs, .. } => {
                         Intent::Timer { duration_secs }
                     }

@@ -143,11 +143,22 @@ impl AudioCapture {
 
         debug!("Selected config: {:?}", supported_config);
 
+        // Use the device's preferred sample rate if our requested rate isn't supported
+        let actual_sample_rate = if config.sample_rate >= supported_config.min_sample_rate().0 
+            && config.sample_rate <= supported_config.max_sample_rate().0 {
+            config.sample_rate
+        } else {
+            // Use the device's default sample rate
+            supported_config.max_sample_rate().0
+        };
+
+        info!("Using sample rate: {} Hz (requested: {} Hz)", actual_sample_rate, config.sample_rate);
+
         // Build stream configuration
         let stream_config = StreamConfig {
             channels: config.channels,
-            sample_rate: cpal::SampleRate(config.sample_rate),
-            buffer_size: cpal::BufferSize::Fixed(config.buffer_size as u32),
+            sample_rate: cpal::SampleRate(actual_sample_rate),
+            buffer_size: cpal::BufferSize::Default, // Let the device choose
         };
 
         let (sender, receiver) = mpsc::channel();
