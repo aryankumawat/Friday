@@ -1,6 +1,6 @@
 # Friday Assistant
 
-Friday is a Rust workspace for a local, privacy-first voice assistant. It bundles a core library, a CLI, and a desktop UI shell, demonstrating an end-to-end pipeline: wake word detection → automatic speech recognition (ASR) → intent handling → text-to-speech (TTS).
+Friday is a privacy-first voice assistant based on Rust workspace for a local environment. It bundles a core library, a CLI, and a desktop UI shell, demonstrating an end-to-end pipeline: wake word detection → automatic speech recognition (ASR) → intent handling → text-to-speech (TTS).
 
 ## Features
 
